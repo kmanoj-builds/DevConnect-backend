@@ -5,6 +5,7 @@ const cors = require('cors');
 
 //routes
 const authRouter = require('./routes/auth.router');
+const profileRouter = require('./routes/profile.router');
 
 const app = express();
 
@@ -15,7 +16,7 @@ app.use(cookieParser());
 
 //use routes
 app.use('/auth', authRouter);
-
+app.use('/profile', profileRouter);
 
 connectDB()
   .then(() => {

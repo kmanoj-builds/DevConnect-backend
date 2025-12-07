@@ -32,25 +32,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
       minLength: 8,
     },
-
-    avatarUrl: {
-      type: String,
-    },
-
-    bio: {
-      type: String,
-    },
-
-    skills: {
-      type: [String],
-    },
-
-    githubUrl: {
-      type: String,
-    },
   },
   { timestamps: true }
 );
+
+
 
 userSchema.methods.getJWT = async function () {
   //get the user
