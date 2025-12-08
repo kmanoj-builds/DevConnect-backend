@@ -13,4 +13,13 @@ const validateSignUpData = (req) => {
 
 };
 
-module.exports = { validateSignUpData };
+// helper: normalize skills to ["react","node"]
+function toSkills(v) {
+  if (Array.isArray(v)) return v.map(s => String(s).trim()).filter(Boolean);
+  if (typeof v === "string") {
+    return v.split(",").map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+module.exports = { validateSignUpData, toSkills };
