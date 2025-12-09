@@ -20,3 +20,12 @@
 - POST /posts/:postId/like --> like/unlike toggle
 - POST /posts/:postId/comment --> Adding the comment
 - DELETE /posts/:postId/comment/:commentId  --> Deleting the comment --> login user only can delete the comments...
+
+- GET /posts/feed --> posts only from who i follow
+
+
+#follow Routes
+- POST /follow/:userId --> following a user
+- DELETE /follow/userId --> unfollow 
+- GET /follow/following --> who i follow
+- GET /follow/followers --> who follows me
