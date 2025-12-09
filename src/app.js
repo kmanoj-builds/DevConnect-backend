@@ -18,13 +18,24 @@ const messageRouter = require('./routes/message.router');
 
 const app = express();
 
+app.get("/", (_req, res) => {
+  res.json({
+    ok: true,
+    service: "devconnect-api",
+    env: process.env.NODE_ENV || "development",
+    time: new Date().toISOString()
+  });
+});
+
+app.get("/health", (_req, res) => {
+  res.status(200).json({ ok: true, status: "healthy" });
+});
 //middlewares
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
-app.use(notFound);      // must be after routes
-app.use(errorHandler);  // must be the last
+
 
 
 //use routes
@@ -37,13 +48,16 @@ app.use('/upload', uploadRouter);
 app.use('/messages', messageRouter);
 
 
+app.use(notFound);      // must be after routes
+app.use(errorHandler);  // must be the last
+
 connectDB()
   .then(() => {
     console.log('Databasse connection established...');
-    app.listen(process.env.PORT || 3000, () => {
+    app.listen(process.env.PORT || 4000, () => {
       console.log(
         'Server is successfully listening on port ' +
-          (process.env.PORT || 3000) +
+          (process.env.PORT || 4000) +
           '...'
       );
     });

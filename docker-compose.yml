@@ -1,0 +1,48 @@
+services:
+  api:
+    build: .
+    container_name: devconnect-api
+    command: npm run dev                   # hot reload in dev
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./:/app                            # mount code
+      - /app/node_modules                  # keep container's node_modules
+      - ./src/uploads:/app/src/uploads     # persist uploads locally
+    environment:
+      # Your runtime envs (override or reuse .env using env_file)
+      - PORT=7777
+      - JWT_SECRET=${JWT_SECRET}
+      - TOKEN_EXPIRES_IN=${TOKEN_EXPIRES_IN:-7d}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      - MONGO_URI=mongodb://mongo:27017/devconnect
+      - NODE_ENV=development
+    depends_on:
+      - mongo
+    # If you prefer reading from .env file directly:
+    # env_file:
+    #   - .env
+
+  mongo:
+    image: mongo:7
+    container_name: devconnect-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - devconnect_data:/data/db
+
+  mongo-express:
+    image: mongo-express:1
+    container_name: devconnect-mexpress
+    ports:
+      - "8081:8081"
+    environment:
+    - ME_CONFIG_MONGODB_SERVER=mongo
+    - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+    - ME_CONFIG_BASICAUTH_USERNAME=manoj
+    - ME_CONFIG_BASICAUTH_PASSWORD=strongpassword
+    depends_on:
+      - mongo
+
+volumes:
+  devconnect_data:
