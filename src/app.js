@@ -4,6 +4,7 @@ const express = require('express');
 const connectDB = require('./config/database');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const { notFound, errorHandler } = require("./middlewares/error");
 
 //routes
 const authRouter = require('./routes/auth.router');
@@ -22,6 +23,9 @@ app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+app.use(notFound);      // must be after routes
+app.use(errorHandler);  // must be the last
+
 
 //use routes
 app.use('/auth', authRouter);

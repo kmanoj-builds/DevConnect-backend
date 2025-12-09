@@ -6,6 +6,8 @@ const Post = require('../models/post');
 const Follow = require('../models/follow');
 const Notification = require('../models/notification');
 const userAuth = require('../middlewares/auth');
+const ApiError = require('../utils/ApiError');
+const wrap = require('../utils/async');
 
 // Creating the router for Post
 const postRouter = express.Router();
@@ -21,41 +23,50 @@ function asArray(value) {
 }
 
 // route for creating a Post
-postRouter.post('/', userAuth, async (req, res) => {
-  try {
-    // getting the user
-    const userId = req.user._id;
+postRouter.post(
+  '/',
+  userAuth,
+  wrap(async (req, res) => {
+    try {
+      // getting the user
+      const userId = req.user._id;
 
-    // getting the content and image of a post
-    const content = (req.body?.content || '').toString().trim();
-    const images = asArray(req.body?.images);
+      // getting the content and image of a post
+      const content = (req.body?.content || '').toString().trim();
+      const images = asArray(req.body?.images);
 
-    if (!content) {
-      return res.status(400).json({ ok: false, error: 'Content is required' });
+      if (!content) {
+        throw new ApiError(400, 'Content is required');
+      }
+
+      // Creating a post
+      const post = await Post.create({ userId, content, images });
+
+      // send response
+      return res.status(201).json({ ok: true, post });
+    } catch (err) {
+      console.error('POST /posts error:', err);
+      return res.status(500).json({ ok: false, error: 'Server error' });
     }
-
-    // Creating a post
-    const post = await Post.create({ userId, content, images });
-
-    // send response
-    return res.status(201).json({ ok: true, post });
-  } catch (err) {
-    console.error('POST /posts error:', err);
-    return res.status(500).json({ ok: false, error: 'Server error' });
-  }
-});
+  })
+);
 
 // posts from only who following
 // GET - /posts/feed
-postRouter.get("/feed", userAuth, async (req, res) => {
+postRouter.get('/feed', userAuth, async (req, res) => {
   try {
     const me = req.user._id;
-    const page  = Math.max(parseInt(req.query.page || "1", 10), 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 50);
-    const skip  = (page - 1) * limit;
+    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit || '10', 10), 1),
+      50
+    );
+    const skip = (page - 1) * limit;
 
-    const follows = await Follow.find({ followerId: me }).select("followingId").lean();
-    const followingIds = follows.map(f => f.followingId);
+    const follows = await Follow.find({ followerId: me })
+      .select('followingId')
+      .lean();
+    const followingIds = follows.map((f) => f.followingId);
 
     if (!followingIds.length) {
       return res.json({ ok: true, page, limit, total: 0, items: [] });
@@ -67,13 +78,13 @@ postRouter.get("/feed", userAuth, async (req, res) => {
         .skip(skip)
         .limit(limit)
         .lean(),
-      Post.countDocuments({ userId: { $in: followingIds } })
+      Post.countDocuments({ userId: { $in: followingIds } }),
     ]);
 
     return res.json({ ok: true, page, limit, total, items });
   } catch (err) {
-    console.error("GET /posts/feed error:", err);
-    return res.status(500).json({ ok: false, error: "Server error" });
+    console.error('GET /posts/feed error:', err);
+    return res.status(500).json({ ok: false, error: 'Server error' });
   }
 });
 
@@ -303,42 +314,46 @@ postRouter.post('/:postId/comment', userAuth, async (req, res) => {
 //Deleting comment
 //DELETE -- /posts/:postId/comment/:commentId
 // DELETE /api/v1/posts/:postId/comment/:commentId
-postRouter.delete('/:postId/comment/:commentId', userAuth, async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const { postId, commentId } = req.params;
+postRouter.delete(
+  '/:postId/comment/:commentId',
+  userAuth,
+  wrap(async (req, res) => {
+    try {
+      const userId = req.user._id;
+      const { postId, commentId } = req.params;
 
-    const post = await Post.findById(postId);
-    if (!post)
-      return res.status(404).json({ ok: false, error: 'Post not found' });
+      const post = await Post.findById(postId);
+      if (!post)
+       throw new ApiError(404, "Post not found");
 
-    // find the subdocument by its _id
-    const comment = post.comments.id(commentId);
-    if (!comment)
-      return res.status(404).json({ ok: false, error: 'Comment not found' });
+      // find the subdocument by its _id
+      const comment = post.comments.id(commentId);
+      if (!comment)
+        throw new ApiError(404, "Comment not found");
 
-    // allow if current user is the post owner OR the comment author
-    const isPostOwner = String(post.userId) === String(userId);
-    const isCommentAuthor = String(comment.userId) === String(userId);
+      // allow if current user is the post owner OR the comment author
+      const isPostOwner = String(post.userId) === String(userId);
+      const isCommentAuthor = String(comment.userId) === String(userId);
 
-    if (!isPostOwner && !isCommentAuthor) {
-      return res.status(403).json({ ok: false, error: 'Not allowed' });
+      if (!isPostOwner && !isCommentAuthor) {
+        return res.status(403).json({ ok: false, error: 'Not allowed' });
+      }
+
+      // remove the comment and save
+      comment.deleteOne(); // or post.comments.id(commentId).deleteOne()
+      await post.save();
+
+      return res.json({
+        ok: true,
+        message: 'Comment deleted',
+        comments: post.comments,
+        commentsCount: post.comments.length,
+      });
+    } catch (err) {
+      console.error('DELETE /posts/:postId/comment/:commentId error:', err);
+      return res.status(500).json({ ok: false, error: 'Server error' });
     }
-
-    // remove the comment and save
-    comment.deleteOne(); // or post.comments.id(commentId).deleteOne()
-    await post.save();
-
-    return res.json({
-      ok: true,
-      message: 'Comment deleted',
-      comments: post.comments,
-      commentsCount: post.comments.length,
-    });
-  } catch (err) {
-    console.error('DELETE /posts/:postId/comment/:commentId error:', err);
-    return res.status(500).json({ ok: false, error: 'Server error' });
-  }
-});
+  })
+);
 
 module.exports = postRouter;
