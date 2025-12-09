@@ -248,41 +248,42 @@ postRouter.post('/:postId/comment', userAuth, async (req, res) => {
 
 //Deleting comment
 //DELETE -- /posts/:postId/comment/:commentId
-postRouter.delete('/:postId/comment/:commentId', userAuth, async (req, res) => {
+// DELETE /api/v1/posts/:postId/comment/:commentId
+postRouter.delete("/:postId/comment/:commentId", userAuth, async (req, res) => {
   try {
     const userId = req.user._id;
     const { postId, commentId } = req.params;
 
     const post = await Post.findById(postId);
-    if (!post) {
-      return res.status(404).json({ ok: false, error: 'Post not found' });
-    }
+    if (!post) return res.status(404).json({ ok: false, error: "Post not found" });
 
+    // find the subdocument by its _id
     const comment = post.comments.id(commentId);
-    if (!comment) {
-      return res.status(404).json({ ok: false, error: 'Comment not found' });
-    }
+    if (!comment) return res.status(404).json({ ok: false, error: "Comment not found" });
 
-    //checking is owner deleting
-    const isOwner = String(post.userId) === String(userId);
+    // allow if current user is the post owner OR the comment author
+    const isPostOwner = String(post.userId) === String(userId);
     const isCommentAuthor = String(comment.userId) === String(userId);
 
-    if (!isOwner && !isCommentAuthor) {
-      return res.status(403).json({ ok: false, error: 'Not allowed' });
+    if (!isPostOwner && !isCommentAuthor) {
+      return res.status(403).json({ ok: false, error: "Not allowed" });
     }
 
-    comment.deleteOne();
+    // remove the comment and save
+    comment.deleteOne(); // or post.comments.id(commentId).deleteOne()
     await post.save();
 
     return res.json({
       ok: true,
+      message: "Comment deleted",
       comments: post.comments,
-      commentsCount: post.comments.length,
+      commentsCount: post.comments.length
     });
   } catch (err) {
-    console.error('DELETE /posts/:postId/comment/:commentId error:', err);
-    return res.status(500).json({ ok: false, error: 'Server error' });
+    console.error("DELETE /posts/:postId/comment/:commentId error:", err);
+    return res.status(500).json({ ok: false, error: "Server error" });
   }
 });
+
 
 module.exports = postRouter;
