@@ -29,3 +29,10 @@
 - DELETE /follow/userId --> unfollow 
 - GET /follow/following --> who i follow
 - GET /follow/followers --> who follows me
+
+
+//notfication Routes
+- GET /notfications --> // GET my notifications (paged, newest first)
+- GET /notfications/unread/count --> // GET unread count
+- PATCH /notfications/:id/read --> // Mark one as read
+- PATCH /notfications/read-all ---> // Mark all as read

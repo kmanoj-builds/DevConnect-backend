@@ -8,6 +8,7 @@ const authRouter = require('./routes/auth.router');
 const profileRouter = require('./routes/profile.router');
 const postRouter = require("./routes/post.router");
 const followRouter = require('./routes/follow.router');
+const notificationRouter = require('./routes/notification.router');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use('/auth', authRouter);
 app.use('/profile', profileRouter);
 app.use('/posts', postRouter);
 app.use('/follow', followRouter);
+app.use('/notifications', notificationRouter);
 
 connectDB()
   .then(() => {

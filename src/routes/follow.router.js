@@ -1,6 +1,7 @@
 const express = require('express');
 const User = require('../models/user');
 const Follow = require('../models/follow');
+const Notification = require('../models/notification');
 const userAuth = require('../middlewares/auth');
 
 const followRouter = express.Router();
@@ -26,6 +27,13 @@ followRouter.post('/:userId', userAuth, async (req, res) => {
       { $setOnInsert: { followeId: me, followingId: target } },
       { upsert: true }
     );
+
+    await Notification.create({
+      userId: target,
+      actorId: me,
+      type: 'follow',
+      meta: {},
+    });
 
     return res.json({ ok: true, message: 'Followed' });
   } catch (err) {

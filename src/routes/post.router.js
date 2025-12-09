@@ -4,6 +4,7 @@ const express = require('express');
 const User = require('../models/user');
 const Post = require('../models/post');
 const Follow = require('../models/follow');
+const Notification = require('../models/notification');
 const userAuth = require('../middlewares/auth');
 
 // Creating the router for Post
@@ -44,6 +45,38 @@ postRouter.post('/', userAuth, async (req, res) => {
   }
 });
 
+// posts from only who following
+// GET - /posts/feed
+postRouter.get("/feed", userAuth, async (req, res) => {
+  try {
+    const me = req.user._id;
+    const page  = Math.max(parseInt(req.query.page || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit || "10", 10), 1), 50);
+    const skip  = (page - 1) * limit;
+
+    const follows = await Follow.find({ followerId: me }).select("followingId").lean();
+    const followingIds = follows.map(f => f.followingId);
+
+    if (!followingIds.length) {
+      return res.json({ ok: true, page, limit, total: 0, items: [] });
+    }
+
+    const [items, total] = await Promise.all([
+      Post.find({ userId: { $in: followingIds } })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Post.countDocuments({ userId: { $in: followingIds } })
+    ]);
+
+    return res.json({ ok: true, page, limit, total, items });
+  } catch (err) {
+    console.error("GET /posts/feed error:", err);
+    return res.status(500).json({ ok: false, error: "Server error" });
+  }
+});
+
 //list of posts -- public feeds
 postRouter.get('/', async (req, res) => {
   try {
@@ -77,43 +110,6 @@ postRouter.get('/', async (req, res) => {
     return res.json({ ok: true, page, limit, total, items: withAuthor });
   } catch (err) {
     console.error('GET /posts error:', err);
-    return res.status(500).json({ ok: false, error: 'Server error' });
-  }
-});
-
-// posts from only who following
-// GET - /posts/feed
-postRouter.get('/feed', userAuth, async (req, res) => {
-  try {
-    const me = req.user._id;
-    const page = Math.max(parseInt(req.query.page || '1', 10), 1);
-    const limit = Math.min(
-      Math.max(parseInt(req.query.limit || '10', 10), 1),
-      50
-    );
-    const skip = (page - 1) * limit;
-
-    const follows = await Follow.find({ followerId: me })
-      .select('followingId')
-      .lean();
-    const followingIds = follows.map((f) => f.followingId);
-
-    if (!followingIds.length) {
-      return res.json({ ok: true, page, limit, total: 0, items: [] });
-    }
-
-    const [items, total] = await Promise.all([
-      Post.find({ userId: { $in: followingIds } })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      Post.countDocuments({ userId: { $in: followingIds } }),
-    ]);
-
-    return res.json({ ok: true, page, limit, total, items });
-  } catch (err) {
-    console.error('GET /posts/feed error:', err);
     return res.status(500).json({ ok: false, error: 'Server error' });
   }
 });
@@ -233,6 +229,15 @@ postRouter.post('/:postId/like', userAuth, async (req, res) => {
       post.likes.push(userId);
       //save it
       await post.save();
+
+      await Notification.create({
+        userId: post.userId, // post owner
+        actorId: userId, // liker
+        type: 'like',
+        postId: post._id,
+        meta: { contentSnippet: post.content?.slice(0, 100) || '' },
+      });
+
       return res.json({ ok: true, liked: true, likesCount: post.likes.length });
     }
     // already liked -- toggle
@@ -272,6 +277,17 @@ postRouter.post('/:postId/comment', userAuth, async (req, res) => {
 
     post.comments.push({ userId, text });
     await post.save();
+
+    if (String(post.userId) !== String(userId)) {
+      await Notification.create({
+        userId: post.userId, // post owner
+        actorId: userId, // commenter
+        type: 'comment',
+        postId: post._id,
+        commentId: post.comments[post.comments.length - 1]._id,
+        meta: { textSnippet: text.slice(0, 100) },
+      });
+    }
 
     return res.status(201).json({
       ok: true,
