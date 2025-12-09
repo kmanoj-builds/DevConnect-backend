@@ -1,3 +1,5 @@
+
+const path = require('path');
 const express = require('express');
 const connectDB = require('./config/database');
 const cookieParser = require('cookie-parser');
@@ -9,6 +11,7 @@ const profileRouter = require('./routes/profile.router');
 const postRouter = require("./routes/post.router");
 const followRouter = require('./routes/follow.router');
 const notificationRouter = require('./routes/notification.router');
+const uploadRouter = require('./routes/upload.router');
 
 const app = express();
 
@@ -16,6 +19,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
 //use routes
 app.use('/auth', authRouter);
@@ -23,6 +27,7 @@ app.use('/profile', profileRouter);
 app.use('/posts', postRouter);
 app.use('/follow', followRouter);
 app.use('/notifications', notificationRouter);
+app.use('/upload', uploadRouter);
 
 connectDB()
   .then(() => {
@@ -39,3 +44,6 @@ connectDB()
     console.log(err);
     console.log('Database cannot be connected!!');
   });
+
+
+module.exports = app;
