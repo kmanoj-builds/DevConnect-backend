@@ -36,3 +36,9 @@
 - GET /notfications/unread/count --> // GET unread count
 - PATCH /notfications/:id/read --> // Mark one as read
 - PATCH /notfications/read-all ---> // Mark all as read
+
+
+//message - REST APIs
+- POST /messages/:receiveId --> send a message
+- GET /messages/:userId     --> getting messages between me and you
+- GET /messages/list/all    --> list all my chats

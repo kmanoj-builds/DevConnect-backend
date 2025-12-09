@@ -12,6 +12,8 @@ const postRouter = require("./routes/post.router");
 const followRouter = require('./routes/follow.router');
 const notificationRouter = require('./routes/notification.router');
 const uploadRouter = require('./routes/upload.router');
+const messageRouter = require('./routes/message.router');
+
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.use('/posts', postRouter);
 app.use('/follow', followRouter);
 app.use('/notifications', notificationRouter);
 app.use('/upload', uploadRouter);
+app.use('/messages', messageRouter);
+
 
 connectDB()
   .then(() => {
