@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  api:
+    image: devconnect-backend-api
+    build: .
+    container_name: devconnect-api
+    command: npm run dev              # nodemon watch (from package.json)
+    ports:
+      - "5555:5555"                   # HOST:CONTAINER
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - ./src/uploads:/app/src/uploads
+    env_file:
+      - .env
+    depends_on:
+      - mongo-express                 # optional; remove if you won’t use it
+
+  mongo-express:
+    image: mongo-express:1
+    container_name: devconnect-mexpress
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_URL=${MONGO_URI}     # point to Atlas
+      - ME_CONFIG_MONGODB_ENABLE_ADMIN=true
+      - ME_CONFIG_BASICAUTH_USERNAME=manoj
+      - ME_CONFIG_BASICAUTH_PASSWORD=manoj
